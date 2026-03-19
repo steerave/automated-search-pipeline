@@ -1,0 +1,189 @@
+# ============================================================
+# Job Search Automation Tool — Search Configuration
+# Edit this file to customize your job search preferences.
+# ============================================================
+
+# ---- Job Titles to Search ---------------------------------
+# These are passed directly to JobSpy as search queries.
+# Add or remove titles as needed.
+job_titles:
+  # Digital Delivery
+  - "Senior Director Digital Delivery"
+  - "Director Digital Delivery"
+  - "Head of Digital Delivery"
+  - "VP Digital Delivery"
+  # Program Management
+  - "Senior Director Technical Program Management"
+  - "Director Technical Program Management"
+  - "Director Digital Program Management"
+  - "Senior Director Program Management"
+  - "Director Program Management"
+  # Professional Services & Client Delivery
+  - "Director Professional Services"
+  - "Senior Director Professional Services"
+  - "Director Client Delivery"
+  - "Director Service Delivery"
+  - "Director Enterprise Service Delivery"
+  # Delivery / Operations
+  - "VP Technology Delivery"
+  - "Senior Director Delivery"
+  - "Director Digital Operations"
+  - "Director of Delivery"
+
+# ---- Required Keywords ------------------------------------
+# Jobs must contain at least one of these in title or description.
+# Leave empty [] to skip this filter.
+required_keywords:
+  # Delivery / program management signals
+  - "delivery"
+  - "program management"
+  - "professional services"
+  - "implementation"
+  - "digital delivery"
+  - "digital platform"
+  - "technical delivery"
+  - "product delivery"
+  # Technology / process signals
+  - "digital transformation"
+  - "agile"
+  - "SDLC"
+  - "engineering"
+  - "release management"
+  - "SaaS"
+  - "software"
+  # Leadership signals
+  - "cross-functional"
+  - "stakeholder"
+
+# ---- Excluded Keywords ------------------------------------
+# Jobs containing any of these are skipped entirely.
+exclude_keywords:
+  # Clearly off-target digital roles
+  - "digital marketing"
+  - "ecommerce director"
+  - "e-commerce director"
+  # Technical mismatches (role-specific — don't exclude "data science" as a domain phrase)
+  - "machine learning engineer"
+  - "data scientist"
+  - "data engineer"
+  - "embedded"
+  - "hardware"
+  - "COBOL"
+  - "mainframe"
+  # - "SAP"  # Removed — some SAP service delivery director roles are relevant
+  # Seniority mismatches
+  - "entry level"
+  - "junior developer"
+  - "junior engineer"
+  - "internship"
+  # Healthcare / medical (keep role-specific; avoid "clinical" which blocks health-tech SaaS delivery roles)
+  - "pharmacist"
+  - "nurse"
+  - "physician"
+  - "rehabilitation"
+  - "therapist"
+  - "patient"
+  - "hospice"
+  - "registered nurse"
+  - "medical"
+  - "health center"
+  - "counseling services"
+  - "home visiting"
+  - "early childhood"
+  - "head start"
+  # Sales roles (avoid filtering "business development" as a phrase — it appears in delivery director JDs too)
+  - "account executive"
+  - "sales director"
+  # Non-digital operations
+  - "supply chain"
+  - "procurement"
+  - "construction"
+  - "manufacturing"
+  - "logistics"
+  - "warehouse"
+  - "maintenance technician"
+  - "controls engineering"
+  - "tunnel"
+  - "transit"
+  - "aviation"
+  - "food service"
+  - "produce manager"
+  # Finance / mortgage / insurance
+  - "mortgage"
+  - "underwriting"
+  - "actuary"
+  - "pricing analyst"
+  - "tax manager"
+  - "tax director"
+  # Education / non-profit (unrelated)
+  - "special education"
+  - "enrollment coordinator"
+  - "school-based"
+  - "early head start"
+  # Other clearly unrelated
+  - "automotive"
+  - "real estate"
+  - "apartment"
+
+# ---- Company Blacklist ------------------------------------
+# Jobs from these companies are skipped.
+exclude_companies: []
+# Example:
+# exclude_companies:
+#   - "Staffing Company XYZ"
+#   - "Some Company I Don't Like"
+
+# ---- Fit Score Thresholds ---------------------------------
+# Jobs below min_fit_score are NOT added to Google Sheets at all.
+min_fit_score: 5
+
+# ---- National Remote Search Config -----------------------
+national_remote:
+  enabled: true
+  # Country code for JobSpy
+  country: "USA"
+  # Job boards to search (options: linkedin, indeed, glassdoor, google, zip_recruiter)
+  job_boards:
+    - "linkedin"
+    - "indeed"
+    - "google"
+    - "zip_recruiter"
+  # Max results to fetch per title per board (before dedup + filtering)
+  results_per_search: 40
+  # Only include jobs posted within this many hours
+  max_age_hours: 72  # 3 days — catches jobs posted Mon-Wed when running daily at 5am
+  # Employment type filter (options: fulltime, parttime, contract, internship)
+  employment_types:
+    - "fulltime"
+
+# ---- Local Quad Cities Search Config ---------------------
+local_qc:
+  enabled: true
+  location: "Quad Cities, IA"
+  radius_miles: 50
+  country: "USA"
+  job_boards:
+    - "linkedin"
+    - "indeed"
+    - "google"
+  results_per_search: 15
+  max_age_hours: 168  # 7 days — local market is smaller, cast a wider net
+  # Include hybrid and on-site roles (remote is filtered out separately)
+  employment_types:
+    - "fulltime"
+
+# ---- Salary Filter ----------------------------------------
+# Uncomment and set to skip jobs below a minimum salary.
+# min_salary: 120000
+
+# ---- Deduplication ----------------------------------------
+# How many days to remember seen jobs before pruning
+seen_jobs_retention_days: 90
+
+# ---- Output -----------------------------------------------
+# Base directory for generated documents (relative to project root)
+output_dir: "output"
+
+# ---- Logging ----------------------------------------------
+log_level: "INFO"
+log_dir: "logs"

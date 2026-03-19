@@ -1,0 +1,41 @@
+# Secrets — NEVER commit these
+.env
+*.json
+
+# Google service account key (redundant with *.json but explicit)
+service_account.json
+*_service_account.json
+
+# Runtime state — machine-specific, not code
+data/seen_jobs.json
+
+# Claude Code local settings
+.claude/
+
+# Generated output
+output/
+
+# Logs
+logs/
+
+# Profile data (personal info)
+profile/resume.pdf
+profile/resume.docx
+profile/parsed_profile.json
+profile/linkedin_export/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+.Python
+pip-log.txt
+
+# Windows
+Thumbs.db
+desktop.ini

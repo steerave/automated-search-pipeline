@@ -1,0 +1,30 @@
+# Job Search Automation Tool — Dependencies
+
+# Job scraping
+python-jobspy>=0.25.0
+
+# Google Sheets
+gspread>=6.0.0
+google-auth>=2.27.0
+google-auth-oauthlib>=1.2.0
+
+# Document generation
+python-docx>=1.1.0
+docxtpl>=0.16.7
+
+# AI tailoring (Claude API)
+anthropic>=0.40.0
+
+# Resume parsing
+PyMuPDF>=1.24.0
+
+# Config management
+python-dotenv>=1.0.0
+PyYAML>=6.0.1
+
+# Email
+# smtplib is built-in, no install needed
+
+# Utilities
+requests>=2.31.0
+pandas>=2.2.0
