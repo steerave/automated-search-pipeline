@@ -29,6 +29,11 @@ job_titles:
   - "Senior Director Delivery"
   - "Director Digital Operations"
   - "Director of Delivery"
+  # Technical Program Management (senior IC / FAANG-style titles)
+  - "Senior Technical Program Manager"
+  - "Staff Technical Program Manager"
+  - "Principal Technical Program Manager"
+  - "Technical Program Manager 5"
 
 # ---- Required Keywords ------------------------------------
 # Jobs must contain at least one of these in title or description.
