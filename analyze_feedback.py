@@ -28,8 +28,15 @@ def setup_logging(log_dir: str, log_level: str = "INFO") -> None:
     Path(log_dir).mkdir(parents=True, exist_ok=True)
     log_file = Path(log_dir) / f"{date.today().isoformat()}.log"
     numeric_level = getattr(logging, log_level.upper(), logging.INFO)
+    # Force UTF-8 on console to handle emojis from Claude responses on Windows
+    stream_handler = logging.StreamHandler(sys.stdout)
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
     handlers = [
-        logging.StreamHandler(sys.stdout),
+        stream_handler,
         logging.FileHandler(log_file, encoding="utf-8"),
     ]
     logging.basicConfig(

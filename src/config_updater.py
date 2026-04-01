@@ -110,7 +110,7 @@ def generate_config_suggestions(
     try:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=1000,
+            max_tokens=2000,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )
