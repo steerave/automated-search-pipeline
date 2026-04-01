@@ -38,6 +38,19 @@ job_titles:
 # ---- Required Keywords ------------------------------------
 # Jobs must contain at least one of these in title or description.
 # Leave empty [] to skip this filter.
+  - Director of Delivery and Strategy
+  - Director Technical Delivery
+  - Delivery Director Marketing Services
+  - Director Product Operations
+  - Chief of Staff Technology
+  - Director Partner Digital Transformation
+  - Director Digital Transformation
+  - AI Product Manager
+  - Senior AI Product Manager
+  - Director Product Management and Delivery
+  - Senior Director Product Management
+  - Director Solutions Delivery
+  - Director Digital Operations and Delivery
 required_keywords:
   # Delivery / program management signals
   - "delivery"
@@ -62,6 +75,15 @@ required_keywords:
 
 # ---- Excluded Keywords ------------------------------------
 # Jobs containing any of these are skipped entirely.
+  - AI strategy
+  - artificial intelligence
+  - product operations
+  - digital strategy
+  - client success
+  - solutions delivery
+  - marketing technology
+  - platform delivery
+  - agency delivery
 exclude_keywords:
   # Clearly off-target digital roles
   - "digital marketing"
@@ -132,6 +154,7 @@ exclude_keywords:
 
 # ---- Company Blacklist ------------------------------------
 # Jobs from these companies are skipped.
+  - PMO
 exclude_companies: []
 # Example:
 # exclude_companies:

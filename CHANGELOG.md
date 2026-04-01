@@ -15,3 +15,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Signal-based skip logic — only runs analysis when 5+ new feedback signals exist
 - `--force` and `--dry-run` flags for manual control
 - Target role profile injection into fit scoring prompt for smarter job matching
+- `run_feedback.bat` for Windows Task Scheduler scheduling
+
+### Fixed
+- Config updater YAML indentation — new entries now preserve correct formatting

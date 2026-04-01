@@ -130,6 +130,7 @@ def apply_config_updates(config_path: str, suggestions: dict) -> list:
     """
     yaml = YAML()
     yaml.preserve_quotes = True
+    yaml.indent(mapping=2, sequence=4, offset=2)
 
     with open(config_path, encoding="utf-8") as f:
         config = yaml.load(f)
