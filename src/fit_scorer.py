@@ -9,8 +9,17 @@ Supports both real-time (messages API) and batch (Batch API) modes.
 import json
 import logging
 import time
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def _load_target_profile() -> str:
+    """Load target role profile if it exists. Returns empty string if not found."""
+    profile_path = Path(__file__).parent.parent / "profile" / "target_role_profile.md"
+    if profile_path.exists():
+        return profile_path.read_text(encoding="utf-8")
+    return ""
 
 MODEL = "claude-sonnet-4-6"
 
@@ -33,6 +42,7 @@ Experience:
 Education:
 {education_text}
 
+{target_role_profile}
 ---
 
 JOB POSTING:
@@ -128,6 +138,20 @@ def score_job(job: dict, profile: dict, client) -> dict:
     if len(description) > 3000:
         description = description[:3000] + "...[truncated]"
 
+    # Build target role profile section
+    target_profile = _load_target_profile()
+    if target_profile:
+        target_section = (
+            "TARGET ROLE PREFERENCES (learned from candidate's own feedback and application history):\n"
+            f"{target_profile}\n\n"
+            "Use these preferences to inform your scoring. If the target profile indicates the candidate\n"
+            "prefers certain industries, company types, or role characteristics, weight those in your score.\n"
+            "A role that matches the candidate's stated preferences should score higher than one that\n"
+            "only matches on paper qualifications.\n"
+        )
+    else:
+        target_section = ""
+
     prompt = FIT_SCORE_PROMPT.format(
         name=profile.get("name", "Candidate"),
         headline=profile.get("headline", ""),
@@ -135,6 +159,7 @@ def score_job(job: dict, profile: dict, client) -> dict:
         skills=profile_texts["skills"],
         experience_text=profile_texts["experience_text"],
         education_text=profile_texts["education_text"],
+        target_role_profile=target_section,
         job_title=job.get("title", ""),
         company=job.get("company", ""),
         location=job.get("location", ""),
