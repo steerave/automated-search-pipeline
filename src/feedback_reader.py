@@ -8,6 +8,7 @@ Google Sheets. Computes signal deltas for skip logic.
 import json
 import logging
 import re
+from datetime import datetime
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -23,7 +24,7 @@ def _clean(val) -> str:
     return s
 
 
-def _parse_my_score(raw: str):
+def _parse_my_score(raw: str) -> int | None:
     """Extract numeric score from 'N — Label' format. Returns None if empty."""
     raw = _clean(raw)
     if not raw:
@@ -32,7 +33,7 @@ def _parse_my_score(raw: str):
     return int(match.group(1)) if match else None
 
 
-def parse_tracker_feedback(rows: list) -> list:
+def parse_tracker_feedback(rows: list[dict]) -> list[dict]:
     """
     Filter Job Tracker rows to only those with user feedback (My Score or Notes).
     Returns normalized dicts.
@@ -46,7 +47,7 @@ def parse_tracker_feedback(rows: list) -> list:
         result.append({
             "role_name": _clean(row.get("Role Name", "")),
             "company": _clean(row.get("Company Name", "")),
-            "fit_score": row.get("Fit Score", ""),
+            "fit_score": row.get("Fit Score", ""),  # raw numeric from sheet, not cleaned
             "fit_notes": _clean(row.get("Fit Notes", "")),
             "my_score": _parse_my_score(my_score_raw),
             "notes": notes,
@@ -60,7 +61,7 @@ def parse_tracker_feedback(rows: list) -> list:
     return result
 
 
-def parse_status_rows(rows: list) -> list:
+def parse_status_rows(rows: list[dict]) -> list[dict]:
     """Convert raw Job Status sheet rows to normalized dicts."""
     result = []
     for row in rows:
@@ -80,9 +81,9 @@ def parse_status_rows(rows: list) -> list:
 
 
 def count_signals(
-    tracker_feedback: list,
-    status_data: list,
-    last_analysis,
+    tracker_feedback: list[dict],
+    status_data: list[dict],
+    last_analysis: dict | None,
 ) -> int:
     """
     Compute number of new signals since last analysis run.
@@ -106,7 +107,7 @@ def has_enough_signals(delta: int, threshold: int = 5) -> bool:
     return delta >= threshold
 
 
-def load_last_analysis(path: str):
+def load_last_analysis(path: str) -> dict | None:
     """Load last analysis state from JSON. Returns None if file doesn't exist."""
     p = Path(path)
     if not p.exists():
@@ -121,7 +122,6 @@ def load_last_analysis(path: str):
 
 def save_last_analysis(path: str, tracker_count: int, status_count: int) -> None:
     """Save current analysis state to JSON."""
-    from datetime import datetime
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     data = {

@@ -1,11 +1,13 @@
 """Tests for feedback_reader — sheet reading and signal counting."""
 
-from unittest.mock import MagicMock
+import json
 from feedback_reader import (
-    parse_tracker_feedback,
-    parse_status_rows,
     count_signals,
     has_enough_signals,
+    load_last_analysis,
+    parse_status_rows,
+    parse_tracker_feedback,
+    save_last_analysis,
 )
 
 
@@ -124,3 +126,28 @@ class TestHasEnoughSignals:
 
     def test_above_threshold(self):
         assert has_enough_signals(10, threshold=5) is True
+
+
+class TestLoadSaveLastAnalysis:
+    """load_last_analysis and save_last_analysis IO round-trip."""
+
+    def test_round_trip(self, tmp_path):
+        """save then load returns matching contents."""
+        path = str(tmp_path / "state" / "last_analysis.json")
+        save_last_analysis(path, tracker_count=3, status_count=7)
+        result = load_last_analysis(path)
+        assert result is not None
+        assert result["tracker_feedback_count"] == 3
+        assert result["status_row_count"] == 7
+        assert "last_run" in result
+
+    def test_load_returns_none_when_file_missing(self, tmp_path):
+        """load returns None when the file does not exist."""
+        path = str(tmp_path / "nonexistent.json")
+        assert load_last_analysis(path) is None
+
+    def test_load_returns_none_on_corrupt_json(self, tmp_path):
+        """load returns None and does not raise on malformed JSON."""
+        path = tmp_path / "bad.json"
+        path.write_text("this is not json", encoding="utf-8")
+        assert load_last_analysis(str(path)) is None
