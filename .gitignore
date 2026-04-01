@@ -8,6 +8,7 @@ service_account.json
 
 # Runtime state — machine-specific, not code
 data/seen_jobs.json
+data/last_analysis.json
 
 # Claude Code local settings
 .claude/
@@ -23,6 +24,7 @@ profile/resume.pdf
 profile/resume.docx
 profile/parsed_profile.json
 profile/linkedin_export/
+profile/target_role_profile.md
 
 # Python
 __pycache__/

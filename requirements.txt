@@ -28,3 +28,9 @@ PyYAML>=6.0.1
 # Utilities
 requests>=2.31.0
 pandas>=2.2.0
+
+# Comment-preserving YAML editing
+ruamel.yaml>=0.18.0
+
+# Testing
+pytest>=8.0.0
