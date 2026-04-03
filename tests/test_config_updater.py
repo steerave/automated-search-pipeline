@@ -60,6 +60,33 @@ class TestParseConfigSuggestions:
         result = parse_config_suggestions("not json at all")
         assert result == {}
 
+    def test_recovers_truncated_json(self):
+        """Truncated API response should still yield complete items."""
+        raw = '''{
+  "add_job_titles": [
+    "Director AI Delivery",
+    "Director of AI Delivery",
+    "AI Delivery Director",
+    "Director Delivery and Strategy",
+    "Senior Director AI Delivery",
+    "Director Te'''
+        result = parse_config_suggestions(raw)
+        assert "add_job_titles" in result
+        assert "Director AI Delivery" in result["add_job_titles"]
+        assert "Director Delivery and Strategy" in result["add_job_titles"]
+        # Truncated item "Director Te" should not appear
+        assert "Director Te" not in result["add_job_titles"]
+
+    def test_recovers_multiple_arrays_from_truncated(self):
+        """Multiple complete arrays recovered even if response is truncated later."""
+        raw = '''{
+  "add_job_titles": ["Title A", "Title B"],
+  "add_required_keywords": ["keyword1"],
+  "reasoning": {"Title A": "applied twice to similar ro'''
+        result = parse_config_suggestions(raw)
+        assert result["add_job_titles"] == ["Title A", "Title B"]
+        assert result["add_required_keywords"] == ["keyword1"]
+
 
 class TestApplyConfigUpdates:
     """apply_config_updates modifies config.yaml correctly."""

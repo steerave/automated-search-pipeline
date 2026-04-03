@@ -93,8 +93,56 @@ def parse_config_suggestions(raw: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        logger.warning(f"Failed to parse config suggestions: {raw[:200]}")
-        return {}
+        # Try to salvage truncated JSON by extracting complete arrays
+        logger.warning(f"JSON parse failed, attempting partial extraction: {raw[:200]}")
+        result = {}
+        for key in ("add_job_titles", "remove_job_titles", "add_required_keywords", "add_exclude_keywords"):
+            try:
+                start = raw.find(f'"{key}"')
+                if start == -1:
+                    continue
+                bracket_start = raw.find("[", start)
+                if bracket_start == -1:
+                    continue
+                bracket_end = raw.find("]", bracket_start)
+                if bracket_end == -1:
+                    # Array was truncated — extract complete string items before the cut
+                    partial = raw[bracket_start + 1:]
+                    items = []
+                    for item in partial.split('"'):
+                        # Every other split segment (odd indices) is a string value
+                        pass
+                    import re
+                    items = re.findall(r'"([^"]+)"', partial)
+                    if items:
+                        result[key] = items
+                else:
+                    array_str = raw[bracket_start:bracket_end + 1]
+                    result[key] = json.loads(array_str)
+            except (json.JSONDecodeError, ValueError):
+                continue
+        # Extract reasoning if complete
+        try:
+            reason_start = raw.find('"reasoning"')
+            if reason_start != -1:
+                brace_start = raw.find("{", reason_start)
+                if brace_start != -1:
+                    depth = 0
+                    for i, c in enumerate(raw[brace_start:], brace_start):
+                        if c == "{":
+                            depth += 1
+                        elif c == "}":
+                            depth -= 1
+                            if depth == 0:
+                                result["reasoning"] = json.loads(raw[brace_start:i + 1])
+                                break
+        except (json.JSONDecodeError, ValueError):
+            pass
+        if result:
+            logger.info(f"Recovered {sum(len(v) for v in result.values() if isinstance(v, list))} suggestions from truncated response")
+        else:
+            logger.warning(f"Could not recover any suggestions from: {raw[:300]}")
+        return result
 
 
 def generate_config_suggestions(
@@ -110,7 +158,7 @@ def generate_config_suggestions(
     try:
         response = client.messages.create(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=4096,
             system=SYSTEM_PROMPT,
             messages=[{"role": "user", "content": prompt}],
         )

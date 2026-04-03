@@ -19,3 +19,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 - Config updater YAML indentation — new entries now preserve correct formatting
+- Config suggestion JSON parsing — increased max_tokens to prevent truncation, added fallback parser to recover partial responses
