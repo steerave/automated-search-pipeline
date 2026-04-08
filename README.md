@@ -1,185 +1,141 @@
-# Job Search Automation Tool
+# AI Job Pipeline
 
-Runs daily at 5am, scrapes new job listings, scores them with Claude AI, updates a Google Sheet tracker, and emails you a morning digest.
+Automated data pipeline that scrapes job listings daily, scores them with Claude AI using a self-improving feedback loop, syncs results to Google Sheets, and delivers a morning email digest.
 
-**Two searches per day:**
-- **National Remote** — US-wide remote-only roles
-- **Local QC** — Quad Cities, IA area (in-person/hybrid)
+---
+
+## Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Scheduler (5am daily)                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  Job Scraper (JobSpy)                                        │
+│  • Multi-board scraping (LinkedIn, Indeed, Glassdoor, etc.)  │
+│  • Deduplication via seen_jobs.json                          │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  LLM Scoring Layer (Claude API)                              │
+│  • Fit score 1–10 against target role profile                │
+│  • Structured rationale output                               │
+│  • Resume tailoring + cover letter generation (above threshold)│
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌───────────────────────────────────────┐   ┌─────────────────┐
+│  Google Sheets Sync                   │   │  Email Digest   │
+│  • Formatted output with color coding │   │  • Top matches  │
+│  • Status tracking columns            │   │  • Score summary│
+└───────────────────────────────────────┘   └─────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│                  Feedback Loop (6am daily)                   │
+│  • Reads user scores from tracker                           │
+│  • Generates/updates target role profile (LLM)              │
+│  • Auto-refines search config (asymmetric: add freely,      │
+│    remove conservatively)                                    │
+│  • Logs all config changes to audit trail                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## Features
 
-- Daily automated job scraping from multiple boards
-- Claude AI fit scoring (1-10)
-- Google Sheets integration with formatting
-- Email digest notifications
-- Feedback analysis — learns from your scoring to improve searches over time
-- Asymmetric config updates — aggressive on adding, conservative on removing
-- Target role profile generation for smarter scoring
+- **Multi-source scraping** — pulls from multiple job boards via JobSpy
+- **LLM-based fit scoring** — Claude scores each job 1–10 against a dynamically-maintained role profile
+- **Self-improving feedback loop** — scores you provide feed back into search config and role profile refinement
+- **Document generation** — tailored resume and cover letter for top matches (above configurable threshold)
+- **Google Sheets integration** — structured output with color-coded scores, status tracking, filtering
+- **Email digest** — daily morning summary of top matches
+- **Asymmetric config updates** — aggressive on adding new search terms, conservative on removing existing ones
+- **Audit trail** — all config changes logged with reasoning
 
 ---
 
 ## One-Time Setup
 
-### 1. Install Python 3.11+
-Download from [python.org](https://python.org). During install, check **"Add Python to PATH"**.
+### 1. Clone and install dependencies
 
-### 2. Install dependencies
-```
-cd "C:\Users\steerave\Desktop\Claude Projects\Job Search Tool"
+```bash
+git clone https://github.com/steerave/ai-job-pipeline.git
+cd ai-job-pipeline
 pip install -r requirements.txt
 ```
 
-### 3. Get an Anthropic API Key
+### 2. Get an Anthropic API Key
+
 Go to [console.anthropic.com](https://console.anthropic.com) → API Keys → Create key.
 
-> **Note:** This is separate from Claude.ai (the chat website). You need a pay-as-you-go API key.
-> Cost: ~$0.05–$0.15 per job (resume + cover letter generation).
+### 3. Set up Google Sheets API
 
-### 4. Set up Google Sheets API
 1. Go to [console.cloud.google.com](https://console.cloud.google.com)
-2. Create a new project (or use an existing one)
-3. Enable: **Google Sheets API** + **Google Drive API**
-4. Go to **IAM & Admin → Service Accounts** → Create Service Account
-5. Click the service account → **Keys → Add Key → JSON** → Download
-6. Save the downloaded JSON file somewhere safe (e.g., next to this project)
-7. Create a new Google Sheet (or use an existing one)
-8. **Share the sheet** with the service account email (looks like `name@project.iam.gserviceaccount.com`) — give it Editor access
-9. Copy the Sheet ID from the URL: `docs.google.com/spreadsheets/d/SHEET_ID/edit`
+2. Create a project and enable: **Google Sheets API** + **Google Drive API**
+3. Go to **IAM & Admin → Service Accounts** → Create Service Account
+4. Click the service account → **Keys → Add Key → JSON** → Download
+5. Create a new Google Sheet and share it with the service account email (Editor access)
+6. Copy the Sheet ID from the URL: `docs.google.com/spreadsheets/d/SHEET_ID/edit`
 
-### 5. Get your LinkedIn data export
-1. LinkedIn → **Settings & Privacy → Data Privacy → Get a copy of your data**
-2. Select **"Fast file"** — check: Profile, Positions, Skills, Education
-3. Wait for the email (usually a few minutes to a few hours)
-4. Download and extract the ZIP
-5. Copy the CSV files into `profile/linkedin_export/`
+### 4. Add your resume and LinkedIn export
 
-### 6. Add your resume
-Place your resume at:
-- `profile/resume.pdf` ← preferred
-- `profile/resume.docx` ← also works
+```
+profile/resume.pdf              # or resume.docx
+profile/linkedin_export/        # CSV files from LinkedIn data export
+```
 
-### 7. Configure `.env`
+**LinkedIn export:** Settings & Privacy → Data Privacy → Get a copy of your data → Fast file (Profile, Positions, Skills, Education)
+
+### 5. Configure `.env`
+
 Copy `.env.template` to `.env` and fill in your values:
+
 ```
 ANTHROPIC_API_KEY=sk-ant-...
-GOOGLE_SHEETS_ID=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms
-GOOGLE_SERVICE_ACCOUNT_JSON=C:\path\to\your\service_account.json
-GOOGLE_JOB_STATUS_SHEET_ID=your_job_status_sheet_id
+GOOGLE_SHEETS_ID=your_sheet_id
+GOOGLE_SERVICE_ACCOUNT_JSON=/path/to/service_account.json
+GOOGLE_JOB_STATUS_SHEET_ID=your_status_sheet_id
 EMAIL_SENDER=your@gmail.com
-EMAIL_PASSWORD=your_app_password_here
+EMAIL_PASSWORD=your_app_password
 EMAIL_RECIPIENT=your@email.com
 ```
 
-> **Gmail App Password:** Go to [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords).
-> You need 2-Step Verification enabled. Create an App Password for "Mail".
+### 6. Customize `config.yaml`
 
-### 8. Customize `config.yaml`
-Edit `config.yaml` to set your target job titles, required/excluded keywords, and score thresholds.
+Edit `config.yaml` to set target job titles, required/excluded keywords, score thresholds, and document generation cutoff.
 
-### 9. Run setup
-```
+### 7. Run setup
+
+```bash
 python setup.py
 ```
-This will:
-- Parse your resume + LinkedIn data → `profile/parsed_profile.json`
-- Initialize the Google Sheet with headers and formatting
-- Validate your `.env` config
 
-**Review `profile/parsed_profile.json`** — make sure your experience bullets are accurate. You can edit it manually if needed.
+This parses your resume and LinkedIn data into `profile/parsed_profile.json`, initializes the Google Sheet with headers and formatting, and validates your config.
 
-### 10. Test run
-```
+### 8. Test run
+
+```bash
 python main.py --dry-run
 ```
-This scrapes and scores jobs without writing anything. Verify the output looks right.
 
-### 11. Schedule with Windows Task Scheduler
-1. Open **Task Scheduler** (search in Start Menu)
-2. Click **Create Basic Task...**
-3. Name: `Job Search Tool`
-4. Trigger: **Daily**, start time: **5:00 AM**
-5. Action: **Start a program**
-   - Program: `python`
-   - Arguments: `"C:\path\to\job-search-tool\main.py"`
-   - Start in: `C:\path\to\job-search-tool`
-6. Finish. Right-click the task → **Run** to test immediately.
+Scrapes and scores without writing anything. Verify output looks correct before scheduling.
 
-> **Tip:** To verify it ran, check Windows Event Viewer (Applications and Services Logs → Task Scheduler) or look at `logs/YYYY-MM-DD.log`.
+### 9. Schedule
+
+Run `main.py` daily (e.g., 5am) and `analyze_feedback.py` daily (e.g., 6am) via your system scheduler.
+
+**Windows Task Scheduler:** Create Basic Task → Daily trigger → `python /path/to/main.py`
 
 ---
 
-## Daily Usage
+## Commands
 
-After setup, the tool runs automatically at 5am. Your workflow:
+### Main pipeline
 
-1. **Check email** — morning digest with top matches + fit scores
-2. **Open Google Sheet** — filter/sort by score, search type, status
-3. **Submit applications** — update the Status column as you go
-
-### Status Dropdown
-The "Status" column in the sheet is for your manual tracking — the tool never overwrites it:
-- `New` — just found, not yet reviewed
-- `Applied` — application submitted
-- `Interviewing` — in the process
-- `Rejected` — no longer active
-- `Offer` — you got an offer!
-
----
-
-## Feedback Analysis
-
-The tool learns from your feedback. Score jobs in the tracker (`My Score` column) and log your applications in the "2026 Job Status" sheet — the feedback analyzer uses both to:
-
-1. **Generate a target role profile** (`profile/target_role_profile.md`) — a nuanced description of your ideal role that makes AI scoring smarter
-2. **Refine search config** (`config.yaml`) — adds new job titles and keywords when patterns emerge in your scoring
-
-### How It Works
-
-- Runs daily at 6am (after the 5am scrape) via Windows Task Scheduler
-- Only runs when **5+ new signals** exist (scored jobs or applied roles)
-- **Aggressive on discovery** — quickly adds new titles/keywords based on your preferences
-- **Conservative on removal** — never auto-removes search terms unless you explicitly say so in your Notes (e.g., "exclude ecommerce director roles")
-- All config changes are logged to `logs/config_changes.log`
-
-### Feedback Analysis Commands
-```bash
-# Normal run (skips if < 5 new signals)
-python analyze_feedback.py
-
-# Force run regardless of signal count
-python analyze_feedback.py --force
-
-# Preview changes without writing
-python analyze_feedback.py --dry-run
-
-# Both
-python analyze_feedback.py --force --dry-run
-```
-
-### Feedback Analysis Setup
-
-1. Share your "2026 Job Status" Google Sheet with the same service account email
-2. Add the sheet ID to `.env`:
-   ```
-   GOOGLE_JOB_STATUS_SHEET_ID=your_sheet_id_here
-   ```
-3. Schedule in Task Scheduler: daily at 6:00 AM, same setup as the main tool
-
-### Scoring Guide (My Score column)
-
-| Score | Meaning | Effect |
-|---|---|---|
-| 5 — Perfect fit | Exactly what I'm looking for | Strongly influences profile toward similar roles |
-| 4 — Good fit | Very relevant, would apply | Moderate positive signal |
-| 3 — Moderate fit | Some relevance, on the fence | Neutral |
-| 2 — Weak fit | Mostly irrelevant | Lowers priority of similar roles |
-| 1 — Poor fit | Completely wrong | Strong negative signal in profile |
-
----
-
-## Manual Run
 ```bash
 # Full run
 python main.py
@@ -191,17 +147,50 @@ python main.py --dry-run
 python main.py --config path/to/config.yaml --env path/to/.env
 ```
 
+### Feedback analysis
+
+```bash
+# Normal run (skips if < 5 new signals)
+python analyze_feedback.py
+
+# Force run regardless of signal count
+python analyze_feedback.py --force
+
+# Preview changes without writing
+python analyze_feedback.py --dry-run
+```
+
+---
+
+## Feedback Loop Design
+
+The system learns from your manual scoring. Rate jobs in the `My Score` column (1–5) and the feedback analyzer uses these signals to:
+
+1. **Update the target role profile** (`profile/target_role_profile.md`) — a nuanced description of your ideal role used by the LLM scorer
+2. **Refine search config** (`config.yaml`) — adds job titles and keywords when patterns emerge
+
+**Asymmetric update policy:** new terms are added after 2+ signals; existing terms are only removed with explicit instruction (e.g., a note like "exclude ecommerce roles"). This prevents useful search terms from being dropped on noise.
+
+| Score | Signal |
+|---|---|
+| 5 | Strong positive — strongly shapes profile toward similar roles |
+| 4 | Positive — moderate signal |
+| 3 | Neutral |
+| 2 | Weak negative — lowers priority of similar roles |
+| 1 | Strong negative — excluded from profile direction |
+
 ---
 
 ## Project Structure
+
 ```
-Job Search Tool/
+ai-job-pipeline/
 ├── .env                          # API keys (never commit)
 ├── config.yaml                   # Search preferences
 ├── requirements.txt
-├── main.py                       # Entry point
+├── main.py                       # Pipeline entry point
 ├── setup.py                      # One-time setup
-├── analyze_feedback.py           # Feedback analysis (runs at 6am)
+├── analyze_feedback.py           # Feedback analysis
 ├── src/
 │   ├── job_scraper.py            # JobSpy scraping
 │   ├── deduplicator.py           # Seen job tracking
@@ -213,12 +202,12 @@ Job Search Tool/
 │   ├── email_notifier.py         # Email digest
 │   └── profile_parser.py         # Resume + LinkedIn parsing
 ├── profile/
-│   ├── resume.pdf                # Your resume (you provide)
-│   ├── linkedin_export/          # LinkedIn CSV export (you provide)
-│   ├── parsed_profile.json       # Auto-generated by setup.py
-│   └── target_role_profile.md    # Auto-generated by analyze_feedback.py
+│   ├── resume.pdf                # Input: your resume
+│   ├── linkedin_export/          # Input: LinkedIn CSV export
+│   ├── parsed_profile.json       # Generated by setup.py
+│   └── target_role_profile.md    # Generated by feedback analyzer
 ├── templates/
-│   ├── resume_template.docx      # Auto-generated by setup.py
+│   ├── resume_template.docx      # Generated by setup.py
 │   └── cover_letter_template.docx
 ├── output/YYYY/MM/               # Generated documents
 ├── data/seen_jobs.json           # Deduplication store
@@ -228,60 +217,51 @@ Job Search Tool/
 
 ---
 
-## Google Sheets Columns
+## Google Sheets Output Schema
+
 | Column | Description |
 |---|---|
 | Date Found | When the job was scraped |
-| Search Type | National Remote or Local QC |
+| Search Type | Search profile that found it |
 | Role Name | Job title |
 | Company Name | Employer |
 | Employment Type | Full-time, Contract, etc. |
 | Remote | Yes / Hybrid / No |
 | Compensation | Salary range if available |
 | Location | Job location |
-| Fit Score | 1–10 (AI scored) — color coded |
-| Fit Notes | AI rationale for the score |
+| Fit Score | 1–10 (LLM scored) — color coded |
+| Fit Notes | LLM rationale for the score |
 | Job Description | First 500 chars |
-| Direct Link | Link to apply |
+| Direct Link | Apply URL |
 | Resume File | Path to tailored resume .docx |
 | Cover Letter File | Path to cover letter .docx |
-| Status | Your manual tracking (New / Applied / Interviewing / Rejected / Offer) |
-| Notes | Free-form notes — e.g. "too junior", "wrong industry", "no salary listed" |
-| My Score | Your 1–5 rating (dropdown) — feeds the feedback analyzer |
-
-Both the **Jobs** tab and **Below Threshold** tab have the My Score column. Scoring below-threshold jobs is especially useful — it helps identify good fits the AI missed.
+| Status | Manual tracking (New / Applied / Interviewing / Rejected / Offer) |
+| Notes | Free-form notes |
+| My Score | 1–5 rating (dropdown) — feeds the feedback analyzer |
 
 ---
 
-## Costs
-- **Job scraping:** Free
-- **Google Sheets:** Free
-- **Claude API:** ~$0.05–$0.15 per job with document generation
-  - At 10 docs/day × $0.10 avg = ~$1/day = ~$30/month
-  - Reduce `max_docs_per_day` in config.yaml to control costs
-  - Set `doc_generation_score` higher (e.g., 8) to only generate docs for top matches
-- **Feedback analysis:** ~$0.03–$0.10 per run (most days skipped)
+## API Cost Optimization
+
+The pipeline is designed to minimize token usage:
+
+- **Fit scoring runs on every job** — uses a compact prompt with the target role profile as context
+- **Document generation is threshold-gated** — only jobs above `doc_generation_score` in `config.yaml` trigger resume tailoring and cover letter generation (the expensive operations)
+- **Feedback analysis skips low-signal days** — only runs when 5+ new scored jobs or applications exist, avoiding unnecessary LLM calls
+- **Config update batching** — all search config changes are batched into a single LLM call per feedback run
+
+Typical usage at default settings: ~$0.05–$0.15 per generated document set. Tune `max_docs_per_day` and `doc_generation_score` in `config.yaml` to control costs.
 
 ---
 
 ## Troubleshooting
 
-**No jobs found:**
-- JobSpy can be blocked by job boards periodically. Try again in a few hours.
-- Check `logs/YYYY-MM-DD.log` for specific error messages.
+**No jobs found:** JobSpy can be rate-limited by job boards periodically. Check `logs/YYYY-MM-DD.log` for details and retry in a few hours.
 
-**Google Sheets auth error:**
-- Make sure the sheet is shared with your service account email
-- Verify both Google Sheets API and Google Drive API are enabled
+**Google Sheets auth error:** Verify the sheet is shared with your service account email and both Sheets and Drive APIs are enabled.
 
-**Email not sending:**
-- Gmail: Use an App Password, not your regular password
-- Check that 2-Step Verification is enabled on your Gmail account
+**Email not sending:** Use an App Password (not your regular password) for Gmail. Requires 2-Step Verification enabled.
 
-**Claude API error:**
-- Verify `ANTHROPIC_API_KEY` is correct
-- Check your API usage at [console.anthropic.com](https://console.anthropic.com)
+**Claude API error:** Verify `ANTHROPIC_API_KEY` is correct and check usage at [console.anthropic.com](https://console.anthropic.com).
 
-**Profile parsing issues:**
-- Manually edit `profile/parsed_profile.json` to fix any incorrect data
-- The AI uses this JSON directly, so accuracy matters
+**Profile parsing issues:** Manually edit `profile/parsed_profile.json` — the LLM uses this directly so accuracy matters.
