@@ -95,7 +95,6 @@ required_keywords:
   - solutions delivery
   - marketing technology
   - platform delivery
-  - agency delivery
   - AI delivery
   - agentic AI
   - GenAI
@@ -233,6 +232,22 @@ local_qc:
   # Include hybrid and on-site roles (remote is filtered out separately)
   employment_types:
     - "fulltime"
+
+# ---- ATS Watchlist Scan Config ---------------------------
+# Companies are managed in the "Watchlist" tab of your Google Sheet.
+# Add a company name to that tab and the tool auto-detects its ATS on the next run.
+watchlist:
+  enabled: true
+  # Only fetch jobs posted/updated within this many days (avoids reprocessing old postings)
+  lookback_days: 3
+  # ATS probe order for unknown companies (first successful match wins)
+  detection_order:
+    - greenhouse
+    - lever
+    - ashby
+    - smartrecruiters
+    - recruitee
+    - bamboohr
 
 # ---- Salary Filter ----------------------------------------
 # Uncomment and set to skip jobs below a minimum salary.

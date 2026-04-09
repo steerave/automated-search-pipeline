@@ -62,6 +62,7 @@ COLUMN_WIDTHS = {
 SEARCH_TYPE_LABELS = {
     "national_remote": "National Remote",
     "local_qc": "Local QC",
+    "watchlist": "ATS Watchlist",
 }
 
 STATUS_NEW = "New"
