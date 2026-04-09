@@ -458,3 +458,88 @@ def update_watchlist_last_scanned(config: dict, row_index: int, last_scanned: st
     """Update Last Scanned timestamp for a row. Column F."""
     ws = _get_watchlist_worksheet(config)
     ws.update(f"F{row_index}", [[last_scanned]])
+
+
+# ─────────────────────────────────────────────────────────────
+# Main Entry Point
+# ─────────────────────────────────────────────────────────────
+
+def fetch_watchlist_jobs(config: dict) -> list[dict]:
+    """
+    Read companies from the Watchlist Google Sheet tab, auto-detect ATS for unknowns,
+    fetch remote jobs posted within lookback_days, and return normalized job dicts.
+
+    Each returned job has the 14 standard fields. The caller (scrape_watchlist in
+    job_scraper.py) adds search_type='watchlist' before returning.
+    """
+    watchlist_cfg = config.get("watchlist", {})
+    if not watchlist_cfg.get("enabled", True):
+        return []
+
+    lookback_days = watchlist_cfg.get("lookback_days", 3)
+    detection_order = watchlist_cfg.get("detection_order", list(ATS_ADAPTERS.keys()))
+
+    companies = read_watchlist(config)
+    all_jobs: list[dict] = []
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    for i, row in enumerate(companies, start=2):  # row 1 = header
+        company_name = row.get("Company Name", "").strip()
+        ats_type = row.get("ATS Type", "unknown").strip().lower()
+        slug = row.get("Slug", "").strip()
+        status = row.get("Status", "active").strip().lower()
+
+        if not company_name:
+            continue
+        if status == "paused":
+            continue
+
+        # Auto-detect ATS for unknown companies
+        if ats_type in ("unknown", ""):
+            logger.info(f"[Watchlist] Detecting ATS for: {company_name}")
+            detected_ats, detected_slug = detect_ats(company_name, detection_order)
+            if detected_ats:
+                ats_type = detected_ats
+                slug = detected_slug
+                update_watchlist_detection(config, i, ats_type, slug, now_str)
+            else:
+                update_watchlist_detection(config, i, "not_detected", "", now_str)
+                continue
+
+        if ats_type == "not_detected":
+            continue
+
+        fetch_fn = ATS_ADAPTERS.get(ats_type)
+        normalizer = NORMALIZERS.get(ats_type)
+        if not fetch_fn or not normalizer:
+            logger.warning(f"[Watchlist] Unknown ATS type '{ats_type}' for {company_name}")
+            continue
+
+        try:
+            raw_jobs = fetch_fn(slug)
+            if raw_jobs is None:
+                logger.warning(f"[Watchlist] Fetch failed: {ats_type}/{slug} ({company_name})")
+                continue
+
+            remote_detector = REMOTE_DETECTORS[ats_type]
+            date_extractor = DATE_EXTRACTORS[ats_type]
+            count_before = len(all_jobs)
+
+            for raw in raw_jobs:
+                if not remote_detector(raw):
+                    continue
+                if not _is_within_days(date_extractor(raw), lookback_days):
+                    continue
+                all_jobs.append(normalizer(raw, company_name))
+
+            found = len(all_jobs) - count_before
+            logger.info(f"[Watchlist] {company_name} ({ats_type}): {found} new remote jobs")
+            update_watchlist_last_scanned(config, i, now_str)
+
+        except Exception as e:
+            logger.error(f"[Watchlist] Error processing {company_name}: {e}")
+
+        time.sleep(0.1)
+
+    logger.info(f"[Watchlist] Total raw jobs fetched: {len(all_jobs)}")
+    return all_jobs

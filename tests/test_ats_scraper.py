@@ -312,3 +312,79 @@ def test_update_watchlist_last_scanned_calls_update():
     ws.update.assert_called_once()
     call_args = ws.update.call_args
     assert "F3" in str(call_args)
+
+
+def test_fetch_watchlist_jobs_known_company():
+    """Known greenhouse company returns normalized remote jobs only."""
+    from src.ats_scraper import fetch_watchlist_jobs
+    from datetime import datetime, timezone, timedelta
+
+    recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    rows = [{"Company Name": "Ogilvy", "ATS Type": "greenhouse", "Slug": "ogilvy",
+             "Status": "active", "Date Added": "2026-01-01", "Last Scanned": ""}]
+    greenhouse_jobs = [
+        {"title": "VP Digital", "location": {"name": "Remote"}, "absolute_url": "https://example.com",
+         "content": "Description", "updated_at": recent},
+        {"title": "Office Manager", "location": {"name": "New York, NY"}, "absolute_url": "https://example2.com",
+         "content": "Description", "updated_at": recent},
+    ]
+    gh_payload = {"jobs": greenhouse_jobs}
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = gh_payload
+
+    config = {"watchlist": {"enabled": True, "lookback_days": 3, "detection_order": ["greenhouse"]}}
+
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=_mock_worksheet(rows)), \
+         patch("src.ats_scraper.requests.get", return_value=mock_resp), \
+         patch("src.ats_scraper.update_watchlist_last_scanned"):
+        jobs = fetch_watchlist_jobs(config)
+
+    # Only the remote job should come through
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "VP Digital"
+    assert jobs[0]["company"] == "Ogilvy"
+    assert jobs[0]["is_remote"] is True
+
+
+def test_fetch_watchlist_jobs_skips_paused():
+    from src.ats_scraper import fetch_watchlist_jobs
+    rows = [{"Company Name": "Paused Co", "ATS Type": "greenhouse", "Slug": "paused-co",
+             "Status": "paused", "Date Added": "", "Last Scanned": ""}]
+    config = {"watchlist": {"enabled": True, "lookback_days": 3, "detection_order": ["greenhouse"]}}
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=_mock_worksheet(rows)):
+        jobs = fetch_watchlist_jobs(config)
+    assert jobs == []
+
+
+def test_fetch_watchlist_jobs_disabled():
+    from src.ats_scraper import fetch_watchlist_jobs
+    config = {"watchlist": {"enabled": False}}
+    with patch("src.ats_scraper._get_watchlist_worksheet") as mock_ws:
+        jobs = fetch_watchlist_jobs(config)
+    mock_ws.assert_not_called()
+    assert jobs == []
+
+
+def test_fetch_watchlist_jobs_filters_old_jobs():
+    """Jobs older than lookback_days are excluded."""
+    from src.ats_scraper import fetch_watchlist_jobs
+    from datetime import datetime, timezone, timedelta
+
+    old = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+    rows = [{"Company Name": "Ogilvy", "ATS Type": "greenhouse", "Slug": "ogilvy",
+             "Status": "active", "Date Added": "", "Last Scanned": ""}]
+    gh_payload = {"jobs": [
+        {"title": "VP Digital", "location": {"name": "Remote"}, "absolute_url": "",
+         "content": "", "updated_at": old},
+    ]}
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = gh_payload
+
+    config = {"watchlist": {"enabled": True, "lookback_days": 3, "detection_order": ["greenhouse"]}}
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=_mock_worksheet(rows)), \
+         patch("src.ats_scraper.requests.get", return_value=mock_resp), \
+         patch("src.ats_scraper.update_watchlist_last_scanned"):
+        jobs = fetch_watchlist_jobs(config)
+    assert jobs == []
