@@ -419,8 +419,8 @@ def _get_watchlist_worksheet(config: dict):
     import gspread
     from google.oauth2.service_account import Credentials
 
-    sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH", "")
-    sheet_id = os.environ.get("GOOGLE_SHEET_ID", "")
+    sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+    sheet_id = os.environ.get("GOOGLE_SHEETS_ID", "")
 
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
