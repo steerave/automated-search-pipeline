@@ -407,3 +407,54 @@ def detect_ats(company_name: str, detection_order: list[str]) -> tuple[str, str]
             time.sleep(PROBE_DELAY)
     logger.info(f"  No ATS detected for: {company_name}")
     return None, None
+
+
+# ─────────────────────────────────────────────────────────────
+# Google Sheets — Watchlist Tab
+# Columns: A=Company Name, B=ATS Type, C=Slug, D=Status, E=Date Added, F=Last Scanned
+# ─────────────────────────────────────────────────────────────
+
+def _get_watchlist_worksheet(config: dict):
+    """Return the Watchlist worksheet, creating it if needed."""
+    import gspread
+    from google.oauth2.service_account import Credentials
+
+    sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH", "")
+    sheet_id = os.environ.get("GOOGLE_SHEET_ID", "")
+
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+    creds = Credentials.from_service_account_file(sa_path, scopes=scopes)
+    client = gspread.authorize(creds)
+    spreadsheet = client.open_by_key(sheet_id)
+
+    try:
+        return spreadsheet.worksheet(WATCHLIST_SHEET)
+    except gspread.WorksheetNotFound:
+        ws = spreadsheet.add_worksheet(title=WATCHLIST_SHEET, rows=1000, cols=len(WATCHLIST_HEADERS))
+        ws.insert_row(WATCHLIST_HEADERS, index=1)
+        logger.info(f"Created '{WATCHLIST_SHEET}' tab in Google Sheets")
+        return ws
+
+
+def read_watchlist(config: dict) -> list[dict]:
+    """Read all rows from the Watchlist sheet tab."""
+    ws = _get_watchlist_worksheet(config)
+    return ws.get_all_records()
+
+
+def update_watchlist_detection(config: dict, row_index: int, ats_type: str, slug: str, date_added: str) -> None:
+    """Write ATS Type, Slug, Status=active, Date Added for a newly detected company.
+    row_index is 1-based (row 1 = header, first data row = 2).
+    Columns: B=ATS Type, C=Slug, D=Status, E=Date Added
+    """
+    ws = _get_watchlist_worksheet(config)
+    ws.update(f"B{row_index}:E{row_index}", [[ats_type, slug, "active", date_added]])
+
+
+def update_watchlist_last_scanned(config: dict, row_index: int, last_scanned: str) -> None:
+    """Update Last Scanned timestamp for a row. Column F."""
+    ws = _get_watchlist_worksheet(config)
+    ws.update(f"F{row_index}", [[last_scanned]])

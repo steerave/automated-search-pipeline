@@ -271,3 +271,44 @@ def test_detect_ats_returns_none_when_all_fail():
         ats, slug = detect_ats("Unknown Company LLC", ["greenhouse", "lever"])
     assert ats is None
     assert slug is None
+
+
+# ── Google Sheets Watchlist ───────────────────────────────────
+
+def _mock_worksheet(rows: list[dict]):
+    """Build a mock gspread worksheet that returns rows from get_all_records()."""
+    ws = MagicMock()
+    ws.get_all_records.return_value = rows
+    return ws
+
+
+def test_read_watchlist_returns_rows():
+    from src.ats_scraper import read_watchlist
+    rows = [
+        {"Company Name": "Ogilvy", "ATS Type": "greenhouse", "Slug": "ogilvy", "Status": "active", "Date Added": "", "Last Scanned": ""},
+        {"Company Name": "Huge", "ATS Type": "unknown", "Slug": "", "Status": "active", "Date Added": "", "Last Scanned": ""},
+    ]
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=_mock_worksheet(rows)):
+        result = read_watchlist({})
+    assert len(result) == 2
+    assert result[0]["Company Name"] == "Ogilvy"
+
+
+def test_update_watchlist_detection_calls_update():
+    from src.ats_scraper import update_watchlist_detection
+    ws = MagicMock()
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=ws):
+        update_watchlist_detection({}, row_index=2, ats_type="greenhouse", slug="ogilvy", date_added="2026-04-09T10:00:00+00:00")
+    ws.update.assert_called_once()
+    call_args = ws.update.call_args
+    assert "B2" in str(call_args)
+
+
+def test_update_watchlist_last_scanned_calls_update():
+    from src.ats_scraper import update_watchlist_last_scanned
+    ws = MagicMock()
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=ws):
+        update_watchlist_last_scanned({}, row_index=3, last_scanned="2026-04-09T10:00:00+00:00")
+    ws.update.assert_called_once()
+    call_args = ws.update.call_args
+    assert "F3" in str(call_args)
