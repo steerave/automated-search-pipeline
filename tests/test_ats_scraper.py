@@ -27,6 +27,11 @@ def test_slug_candidates_inc_suffix():
     candidates = _generate_slug_candidates("Merkle, Inc.")
     assert "merkle" in candidates
 
+def test_slug_candidates_empty_name():
+    from src.ats_scraper import _generate_slug_candidates
+    # Names that produce no valid slug return empty list
+    assert _generate_slug_candidates("!!!") == []
+
 def test_parse_date_iso():
     from src.ats_scraper import _parse_date
     from datetime import timezone

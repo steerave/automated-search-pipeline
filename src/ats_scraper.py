@@ -40,6 +40,8 @@ def _generate_slug_candidates(company_name: str) -> list[str]:
             name = name[: -len(suffix)].strip()
             break
     slug = re.sub(r"[^a-z0-9]+", "-", name).strip("-")
+    if not slug:
+        return []
     candidates = [slug]
     no_hyphens = slug.replace("-", "")
     if no_hyphens != slug:
@@ -67,7 +69,7 @@ def _parse_date(value) -> datetime | None:
         return None
 
 
-def _is_within_days(value, days: int) -> bool:
+def _is_within_days(value: str | int | float | None, days: int) -> bool:
     """Return True if value parses to a date within the last N days. Unknown dates return True."""
     dt = _parse_date(value)
     if dt is None:
