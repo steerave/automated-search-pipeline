@@ -11,18 +11,19 @@
 - Integrated into `job_scraper.py` via `scrape_watchlist()` + updated `scrape_all_jobs()` — watchlist is now a third job source alongside national_remote and local_qc
 - 43 unit tests in `tests/test_ats_scraper.py` covering all adapters, remote detectors, normalizers, auto-detection, and orchestrator
 - End-to-end dry run confirmed: Apple/Microsoft/Amazon → smartrecruiters, Ogilvy → greenhouse — all detected and written back to sheet
+- Populated Watchlist Google Sheet tab with 727 companies (ready for first full detection run)
 
 **In Progress:**
 - Nothing — feature is complete and pushed
 
 **Next:**
-- Populate Watchlist tab with full 600+ company list (user generating this separately)
-- Address two tech debt items flagged in final review: (1) duplicated GSheets auth logic between ats_scraper.py and sheets_updater.py, (2) orphaned YAML entries in config.yaml
+- Run `python main.py --dry-run` tonight to pre-cache ATS detection for all 727 companies (avoids 15-30 min detection overhead on tomorrow's 5am scheduled run)
+- Address two tech debt items: (1) duplicated GSheets auth logic between `ats_scraper.py` and `sheets_updater.py`, (2) orphaned YAML entries in `config.yaml`
 - Start career strategy expansion: multi-profile AI search, career-advisor skill, networking tracker
 
 **Notes:**
-- `lookback_days: 3` is the right default — 0 watchlist jobs in dry run is expected behavior (large companies don't post matching remote roles every 3 days)
-- ATS coverage estimate: ~55-65% of a digital marketing company list; Workday/iCIMS companies are covered by the existing daily JobSpy scrape via LinkedIn/Indeed syndication
+- First run with 727 unknown companies will take 15-30 min for ATS detection; subsequent runs fast (detection cached in sheet)
+- ATS coverage estimate: ~55-65% of list; Workday/iCIMS companies already covered by JobSpy scrape via LinkedIn/Indeed syndication
 - Plan saved at `docs/superpowers/plans/2026-04-09-ats-watchlist-scanner.md`
 
 ## 2026-04-03

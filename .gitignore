@@ -19,6 +19,9 @@ output/
 # Logs
 logs/
 
+# Company watchlist source files (personal/generated data)
+agencies/
+
 # Profile data (personal info)
 profile/resume.pdf
 profile/resume.docx

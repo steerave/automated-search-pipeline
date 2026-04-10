@@ -70,6 +70,8 @@ Scoring guide:
 3-4: Weak match — significant skill or experience gaps
 1-2: Poor match — fundamentally different background
 
+Agency experience bonus: If the job description explicitly prefers or requires marketing agency or digital agency experience, treat the candidate's agency background (R/GA, AKQA, Verndale) as a strong positive signal and increase the score accordingly. Note this match in the rationale.
+
 Be specific in the rationale. Name actual skills/technologies that match or are missing."""
 
 
