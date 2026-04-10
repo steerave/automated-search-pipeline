@@ -1,5 +1,30 @@
 # Project Status Log
 
+## 2026-04-09
+
+**Done:**
+- Built `src/ats_scraper.py` — full ATS watchlist scanner with 6 adapters (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, BambooHR)
+- ATS auto-detection: probes endpoints using slug candidates generated from company names, caches result back to Google Sheet
+- Per-ATS remote detection (uses platform-native fields: `isRemote`, `workplaceType`, location text), date extraction, and job normalization to standard 14-field dict via shared `_make_job()` helper
+- Google Sheets "Watchlist" tab read/write: `read_watchlist()`, `update_watchlist_detection()`, `update_watchlist_last_scanned()`
+- `fetch_watchlist_jobs()` orchestrator: reads watchlist, detects unknowns, fetches remote jobs within `lookback_days`, returns normalized dicts
+- Integrated into `job_scraper.py` via `scrape_watchlist()` + updated `scrape_all_jobs()` — watchlist is now a third job source alongside national_remote and local_qc
+- 43 unit tests in `tests/test_ats_scraper.py` covering all adapters, remote detectors, normalizers, auto-detection, and orchestrator
+- End-to-end dry run confirmed: Apple/Microsoft/Amazon → smartrecruiters, Ogilvy → greenhouse — all detected and written back to sheet
+
+**In Progress:**
+- Nothing — feature is complete and pushed
+
+**Next:**
+- Populate Watchlist tab with full 600+ company list (user generating this separately)
+- Address two tech debt items flagged in final review: (1) duplicated GSheets auth logic between ats_scraper.py and sheets_updater.py, (2) orphaned YAML entries in config.yaml
+- Start career strategy expansion: multi-profile AI search, career-advisor skill, networking tracker
+
+**Notes:**
+- `lookback_days: 3` is the right default — 0 watchlist jobs in dry run is expected behavior (large companies don't post matching remote roles every 3 days)
+- ATS coverage estimate: ~55-65% of a digital marketing company list; Workday/iCIMS companies are covered by the existing daily JobSpy scrape via LinkedIn/Indeed syndication
+- Plan saved at `docs/superpowers/plans/2026-04-09-ats-watchlist-scanner.md`
+
 ## 2026-04-03
 
 **Done:**
