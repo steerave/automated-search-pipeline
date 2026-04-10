@@ -414,14 +414,20 @@ def detect_ats(company_name: str, detection_order: list[str]) -> tuple[str, str]
 # Columns: A=Company Name, B=ATS Type, C=Slug, D=Status, E=Date Added, F=Last Scanned
 # ─────────────────────────────────────────────────────────────
 
+_worksheet_cache: dict = {}
+
+
 def _get_watchlist_worksheet(config: dict):
-    """Return the Watchlist worksheet, creating it if needed."""
+    """Return the Watchlist worksheet, creating it if needed. Cached per run."""
     import gspread
     from google.oauth2.service_account import Credentials
 
-    sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     sheet_id = os.environ.get("GOOGLE_SHEETS_ID", "")
+    cache_key = (sheet_id, WATCHLIST_SHEET)
+    if cache_key in _worksheet_cache:
+        return _worksheet_cache[cache_key]
 
+    sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive",
@@ -431,12 +437,14 @@ def _get_watchlist_worksheet(config: dict):
     spreadsheet = client.open_by_key(sheet_id)
 
     try:
-        return spreadsheet.worksheet(WATCHLIST_SHEET)
+        ws = spreadsheet.worksheet(WATCHLIST_SHEET)
     except gspread.WorksheetNotFound:
         ws = spreadsheet.add_worksheet(title=WATCHLIST_SHEET, rows=1000, cols=len(WATCHLIST_HEADERS))
         ws.insert_row(WATCHLIST_HEADERS, index=1)
         logger.info(f"Created '{WATCHLIST_SHEET}' tab in Google Sheets")
-        return ws
+
+    _worksheet_cache[cache_key] = ws
+    return ws
 
 
 def read_watchlist(config: dict) -> list[dict]:
@@ -471,6 +479,9 @@ def fetch_watchlist_jobs(config: dict) -> list[dict]:
 
     Each returned job has the 14 standard fields. The caller (scrape_watchlist in
     job_scraper.py) adds search_type='watchlist' before returning.
+
+    All Google Sheets writes are batched into a single API call at the end to avoid
+    hitting the 60 writes/minute quota when scanning hundreds of companies.
     """
     watchlist_cfg = config.get("watchlist", {})
     if not watchlist_cfg.get("enabled", True):
@@ -482,6 +493,7 @@ def fetch_watchlist_jobs(config: dict) -> list[dict]:
     companies = read_watchlist(config)
     all_jobs: list[dict] = []
     now_str = datetime.now(timezone.utc).isoformat()
+    pending_updates: list[dict] = []  # batched sheet writes
 
     for i, row in enumerate(companies, start=2):  # row 1 = header
         company_name = row.get("Company Name", "").strip()
@@ -501,9 +513,9 @@ def fetch_watchlist_jobs(config: dict) -> list[dict]:
             if detected_ats:
                 ats_type = detected_ats
                 slug = detected_slug
-                update_watchlist_detection(config, i, ats_type, slug, now_str)
+                pending_updates.append({"range": f"B{i}:E{i}", "values": [[ats_type, slug, "active", now_str]]})
             else:
-                update_watchlist_detection(config, i, "not_detected", "", now_str)
+                pending_updates.append({"range": f"B{i}:E{i}", "values": [["not_detected", "", "active", now_str]]})
                 continue
 
         if ats_type == "not_detected":
@@ -534,12 +546,18 @@ def fetch_watchlist_jobs(config: dict) -> list[dict]:
 
             found = len(all_jobs) - count_before
             logger.info(f"[Watchlist] {company_name} ({ats_type}): {found} new remote jobs")
-            update_watchlist_last_scanned(config, i, now_str)
+            pending_updates.append({"range": f"F{i}", "values": [[now_str]]})
 
         except Exception as e:
             logger.error(f"[Watchlist] Error processing {company_name}: {e}")
 
         time.sleep(0.1)
+
+    # Flush all sheet writes in one batch call
+    if pending_updates:
+        ws = _get_watchlist_worksheet(config)
+        ws.batch_update(pending_updates)
+        logger.info(f"[Watchlist] Wrote {len(pending_updates)} sheet updates in one batch")
 
     logger.info(f"[Watchlist] Total raw jobs fetched: {len(all_jobs)}")
     return all_jobs
