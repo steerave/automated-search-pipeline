@@ -34,35 +34,36 @@ job_titles:
   - "Staff Technical Program Manager"
   - "Principal Technical Program Manager"
   - "Technical Program Manager 5"
+  # Additional titles (added by feedback analyzer)
+  - "Director of Delivery and Strategy"
+  - "Director Technical Delivery"
+  - "Delivery Director Marketing Services"
+  - "Director Product Operations"
+  - "Chief of Staff Technology"
+  - "Director Partner Digital Transformation"
+  - "Director Digital Transformation"
+  - "AI Product Manager"
+  - "Senior AI Product Manager"
+  - "Director Product Management and Delivery"
+  - "Senior Director Product Management"
+  - "Director Solutions Delivery"
+  - "Director Digital Operations and Delivery"
+  - "Director AI Delivery"
+  - "Director of AI Delivery"
+  - "Director Delivery and Strategy"
+  - "Director of Delivery and Operations"
+  - "VP Implementation Services"
+  - "Senior Director Implementation Services"
+  - "Director Implementation Services"
+  - "Director of Technical Delivery"
+  - "Technical Delivery Director"
+  - "Director AI Strategy and Delivery"
+  - "Director Platform Delivery"
+  - "Director Digital Delivery and Operations"
 
 # ---- Required Keywords ------------------------------------
 # Jobs must contain at least one of these in title or description.
 # Leave empty [] to skip this filter.
-  - Director of Delivery and Strategy
-  - Director Technical Delivery
-  - Delivery Director Marketing Services
-  - Director Product Operations
-  - Chief of Staff Technology
-  - Director Partner Digital Transformation
-  - Director Digital Transformation
-  - AI Product Manager
-  - Senior AI Product Manager
-  - Director Product Management and Delivery
-  - Senior Director Product Management
-  - Director Solutions Delivery
-  - Director Digital Operations and Delivery
-  - Director AI Delivery
-  - Director of AI Delivery
-  - Director Delivery and Strategy
-  - Director of Delivery and Operations
-  - VP Implementation Services
-  - Senior Director Implementation Services
-  - Director Implementation Services
-  - Director of Technical Delivery
-  - Technical Delivery Director
-  - Director AI Strategy and Delivery
-  - Director Platform Delivery
-  - Director Digital Delivery and Operations
 required_keywords:
   # Delivery / program management signals
   - "delivery"
@@ -87,24 +88,6 @@ required_keywords:
 
 # ---- Excluded Keywords ------------------------------------
 # Jobs containing any of these are skipped entirely.
-  - AI strategy
-  - artificial intelligence
-  - product operations
-  - digital strategy
-  - client success
-  - solutions delivery
-  - marketing technology
-  - platform delivery
-  - AI delivery
-  - agentic AI
-  - GenAI
-  - implementation services
-  - delivery operations
-  - digital promotions
-  - consumer applications
-  - vendor management
-  - offshore teams
-  - release governance
 exclude_keywords:
   # Clearly off-target digital roles
   - "digital marketing"
@@ -172,22 +155,38 @@ exclude_keywords:
   - "automotive"
   - "real estate"
   - "apartment"
+  # Industry / role type mismatches (added by feedback analyzer)
+  # Note: "solutions delivery", "platform delivery", "AI delivery", "implementation services",
+  # "delivery operations" were NOT added here — they conflict with active job title searches.
+  - "AI strategy"
+  - "artificial intelligence"
+  - "product operations"
+  - "digital strategy"
+  - "client success"
+  - "marketing technology"
+  - "agentic AI"
+  - "GenAI"
+  - "digital promotions"
+  - "consumer applications"
+  - "vendor management"
+  - "offshore teams"
+  - "release governance"
+  - "PMO"
+  - "PMO director"
+  - "pure PMO"
+  - "portfolio strategy"
+  - "POS systems"
+  - "loyalty program"
+  - "cybersecurity"
+  - "healthcare"
+  - "clinical"
+  - "pharma"
+  - "fintech"
+  - "banking"
+  - "financial services"
 
 # ---- Company Blacklist ------------------------------------
 # Jobs from these companies are skipped.
-  - PMO
-  - PMO director
-  - pure PMO
-  - portfolio strategy
-  - POS systems
-  - loyalty program
-  - cybersecurity
-  - healthcare
-  - clinical
-  - pharma
-  - fintech
-  - banking
-  - financial services
 exclude_companies: []
 # Example:
 # exclude_companies:
