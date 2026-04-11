@@ -23,6 +23,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Target role profile injection into fit scoring prompt for smarter job matching
 - `run_feedback.bat` for Windows Task Scheduler scheduling
 
+### Changed
+- Watchlist ATS scan now runs companies in parallel (configurable `scan_workers`, default 10), reducing scan time from 10+ minutes to ~65 seconds for 650 companies
+
 ### Fixed
 - Config updater YAML indentation — new entries now preserve correct formatting
 - Config suggestion JSON parsing — increased max_tokens to prevent truncation, added fallback parser to recover partial responses

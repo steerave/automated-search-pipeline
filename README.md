@@ -163,6 +163,15 @@ EMAIL_RECIPIENT=your@email.com
 
 Edit `config.yaml` to set target job titles, required/excluded keywords, score thresholds, and document generation cutoff. You can edit this file directly at any time — it is the single source of truth for search configuration.
 
+Key configuration options:
+- `job_titles` — target job titles passed to JobSpy
+- `required_keywords`, `exclude_keywords` — filter jobs by title and description
+- `min_fit_score` — jobs below this score are not added to Google Sheets
+- `national_remote` — config for national remote job board search
+- `local_qc` — config for local Quad Cities search
+- `watchlist.scan_workers` — parallel workers for ATS scanning (default: `10`); improves scan time from 10+ minutes to ~65 seconds for 650 companies
+- `watchlist.lookback_days` — only fetch jobs posted within this many days
+
 ### 7. Run setup
 
 ```bash
