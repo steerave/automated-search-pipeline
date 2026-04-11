@@ -457,3 +457,99 @@ def test_scrape_all_jobs_includes_watchlist():
         result = scrape_all_jobs(config)
     assert any(j["search_type"] == "watchlist" for j in result)
     assert any(j["title"] == "Watchlist Job" for j in result)
+
+
+# ── Parallel scanning ─────────────────────────────────────────
+
+def test_scan_company_returns_jobs_and_update():
+    """_scan_company returns remote jobs and a Last Scanned update for a known company."""
+    from src.ats_scraper import _scan_company
+    from datetime import datetime, timezone, timedelta
+
+    recent = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+    row = {
+        "Company Name": "Ogilvy",
+        "ATS Type": "greenhouse",
+        "Slug": "ogilvy",
+        "Status": "active",
+        "Date Added": "",
+        "Last Scanned": "",
+    }
+    gh_payload = {"jobs": [
+        {"title": "VP Digital", "location": {"name": "Remote"},
+         "absolute_url": "https://example.com", "content": "desc", "updated_at": recent},
+        {"title": "Office Manager", "location": {"name": "New York, NY"},
+         "absolute_url": "https://example2.com", "content": "desc", "updated_at": recent},
+    ]}
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = gh_payload
+
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    with patch("src.ats_scraper.requests.get", return_value=mock_resp):
+        jobs, updates = _scan_company(row, 2, lookback_days=3,
+                                      detection_order=["greenhouse"], now_str=now_str)
+
+    # Only remote job returned
+    assert len(jobs) == 1
+    assert jobs[0]["title"] == "VP Digital"
+    # Last Scanned update queued
+    assert len(updates) == 1
+    assert updates[0]["range"] == "F2"
+    assert updates[0]["values"] == [[now_str]]
+
+
+def test_scan_company_returns_empty_on_fetch_failure():
+    """_scan_company returns ([], []) when the ATS fetch fails — no exception raised."""
+    from src.ats_scraper import _scan_company
+    from datetime import datetime, timezone
+
+    row = {
+        "Company Name": "Belkins",
+        "ATS Type": "lever",
+        "Slug": "belkins",
+        "Status": "active",
+        "Date Added": "",
+        "Last Scanned": "",
+    }
+    now_str = datetime.now(timezone.utc).isoformat()
+
+    with patch("src.ats_scraper.requests.get", side_effect=Exception("connection error")):
+        jobs, updates = _scan_company(row, 3, lookback_days=3,
+                                      detection_order=["lever"], now_str=now_str)
+
+    assert jobs == []
+    assert updates == []
+
+
+def test_fetch_watchlist_jobs_uses_configured_workers():
+    """fetch_watchlist_jobs passes scan_workers from config to ThreadPoolExecutor."""
+    from src.ats_scraper import fetch_watchlist_jobs
+
+    rows = [{"Company Name": "Ogilvy", "ATS Type": "greenhouse", "Slug": "ogilvy",
+             "Status": "active", "Date Added": "", "Last Scanned": ""}]
+    config = {
+        "watchlist": {
+            "enabled": True,
+            "lookback_days": 3,
+            "scan_workers": 5,
+            "detection_order": ["greenhouse"],
+        }
+    }
+    ws = _mock_worksheet(rows)
+    ws.batch_update = MagicMock()
+
+    with patch("src.ats_scraper._get_watchlist_worksheet", return_value=ws), \
+         patch("src.ats_scraper._scan_company", return_value=([], [])) as mock_scan, \
+         patch("src.ats_scraper.ThreadPoolExecutor") as mock_executor_cls:
+
+        mock_executor = MagicMock()
+        mock_executor.__enter__ = MagicMock(return_value=mock_executor)
+        mock_executor.__exit__ = MagicMock(return_value=False)
+        mock_executor.submit.return_value = MagicMock()
+        mock_executor_cls.return_value = mock_executor
+
+        fetch_watchlist_jobs(config)
+
+    mock_executor_cls.assert_called_once_with(max_workers=5)
