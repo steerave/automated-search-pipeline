@@ -87,6 +87,30 @@ def get_sheets_updater(config: dict):
     return updater
 
 
+def _filter_scoreable_jobs(jobs: list[dict], config: dict) -> tuple[list[dict], list[dict]]:
+    """
+    Pre-scoring filter: keep only jobs whose title contains at least one domain word.
+    Domain words are configured in config.yaml under title_domain_words.
+    Returns (scoreable, skipped). If title_domain_words is empty, all jobs are scoreable.
+    """
+    domain_words = [w.lower() for w in config.get("title_domain_words", [])]
+    if not domain_words:
+        return jobs, []
+
+    scoreable = []
+    skipped = []
+    for job in jobs:
+        title_lower = job.get("title", "").lower()
+        if any(word in title_lower for word in domain_words):
+            scoreable.append(job)
+        else:
+            logger.info(
+                f"Pre-filter: off-domain title skipped — '{job['title']}' @ {job['company']}"
+            )
+            skipped.append(job)
+    return scoreable, skipped
+
+
 # ---------------------------------------------------------------------------
 # Main pipeline
 # ---------------------------------------------------------------------------
@@ -169,9 +193,29 @@ def run_pipeline(config: dict, dry_run: bool = False, no_age_filter: bool = Fals
             send_digest_from_env([], 0, len(duplicates), errors)
         return summary
 
+    # --- Pre-scoring filter ---
+    logger.info("=" * 60)
+    logger.info("STEP 3: Pre-scoring filter...")
+    logger.info("=" * 60)
+    scoreable_jobs, domain_skipped = _filter_scoreable_jobs(new_jobs, config)
+    if domain_skipped:
+        logger.info(
+            f"Domain pre-filter: {len(domain_skipped)} off-domain jobs skipped, "
+            f"{len(scoreable_jobs)} remain for scoring"
+        )
+
+    max_to_score = config.get("max_jobs_to_score", 200)
+    if len(scoreable_jobs) > max_to_score:
+        logger.warning(
+            f"Job count ({len(scoreable_jobs)}) exceeds max_jobs_to_score={max_to_score}. "
+            f"Truncating. Raise the cap or narrow job_titles to avoid dropping results."
+        )
+        scoreable_jobs = scoreable_jobs[:max_to_score]
+    new_jobs = scoreable_jobs
+
     # --- Score ---
     logger.info("=" * 60)
-    logger.info("STEP 3: Scoring job fit with Claude...")
+    logger.info("STEP 4: Scoring job fit with Claude...")
     logger.info("=" * 60)
     try:
         client = get_anthropic_client()
@@ -210,7 +254,7 @@ def run_pipeline(config: dict, dry_run: bool = False, no_age_filter: bool = Fals
 
     # --- Google Sheets ---
     logger.info("=" * 60)
-    logger.info("STEP 4: Updating Google Sheets...")
+    logger.info("STEP 5: Updating Google Sheets...")
     logger.info("=" * 60)
 
     sheets = None
@@ -252,7 +296,7 @@ def run_pipeline(config: dict, dry_run: bool = False, no_age_filter: bool = Fals
 
     # --- Send email ---
     logger.info("=" * 60)
-    logger.info("STEP 5: Sending email digest...")
+    logger.info("STEP 6: Sending email digest...")
     logger.info("=" * 60)
     try:
         sent = send_digest_from_env(

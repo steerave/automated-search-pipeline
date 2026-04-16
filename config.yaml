@@ -192,6 +192,31 @@ exclude_companies: []
 # Jobs below min_fit_score are NOT added to Google Sheets at all.
 min_fit_score: 5
 
+# ---- Pre-Scoring Title Filter ---------------------------
+# Jobs whose title contains none of these words are skipped before Claude scoring.
+# Catches off-target results from watchlist/local QC that bypass required_keywords.
+title_domain_words:
+  - "delivery"
+  - "program"
+  - "digital"
+  - "technical"
+  - "implementation"
+  - "transformation"
+  - "operations"
+  - "product"
+  - "producer"
+  - "campaign"
+  - "marketing"
+  - "solutions"
+  - "platform"
+  - "strategy"
+
+# ---- Scoring Cap -----------------------------------------
+# Hard limit on jobs scored per run. If exceeded, a warning is logged
+# and jobs are truncated (national_remote first, then local_qc, then watchlist).
+# Prevents runaway API costs on bad scrape days.
+max_jobs_to_score: 150
+
 # ---- National Remote Search Config -----------------------
 national_remote:
   enabled: true
