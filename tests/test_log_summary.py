@@ -174,7 +174,7 @@ class TestFormatSummary:
     def test_error_note_present_when_errors(self):
         stats = parse_log_text(SAMPLE_LOG_WITH_ERRORS)
         result = format_summary(stats, "2026-04-16")
-        assert "2" in result
+        assert "Errors:         2" in result
 
     def test_location_filter_line_when_nonzero(self):
         result = format_summary(self._stats(), "2026-04-16")

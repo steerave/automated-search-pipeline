@@ -66,6 +66,7 @@ def parse_log_text(text: str) -> dict:
         "new": new,
         "added": added,
         "below": below,
+        # scored = jobs that completed scoring; uses last match of summary block values
         "scored": added + below,
         "domain_skipped": domain_skipped,
         "cap_hit": cap_hit,
@@ -81,6 +82,9 @@ def estimate_cost(scored: int) -> float:
     Assumes prompt caching is active: first call pays full system token price,
     subsequent calls pay cached read rate for the system prompt.
     """
+    # Note: counts only jobs that completed scoring (added + below threshold).
+    # Jobs that failed all 3 retry attempts are not counted but did consume tokens.
+    # Cost is therefore an undercount on runs with API errors.
     if scored <= 0:
         return 0.0
     first_call = (
@@ -112,7 +116,7 @@ def format_summary(stats: dict, log_date: str) -> str:
             f"  Local filter: {stats['loc_removed']:>4} non-local removed"
         )
 
-    lines.append(f"Duplicates:     {stats['new']:>4} new  |  rest were duplicates")
+    lines.append(f"New (unseen):   {stats['new']:>4}  |  rest were duplicates")
 
     if stats["domain_skipped"]:
         lines.append(
@@ -151,7 +155,7 @@ def main() -> None:
 
     if not log_path.exists():
         print(f"No log found for {log_date} ({log_path})")
-        sys.exit(0)
+        sys.exit(1)
 
     text = log_path.read_text(encoding="utf-8", errors="replace")
     stats = parse_log_text(text)
