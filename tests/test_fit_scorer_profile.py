@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from fit_scorer import _load_target_profile, FIT_SCORE_PROMPT
+from fit_scorer import _load_target_profile, CACHED_SYSTEM_TEMPLATE
 
 
 class TestLoadTargetProfile:
@@ -37,8 +37,8 @@ class TestLoadTargetProfile:
         assert result == ""
 
 
-class TestFitScorePromptIncludesProfile:
-    """FIT_SCORE_PROMPT must include target_role_profile placeholder."""
+class TestCachedSystemTemplateIncludesProfile:
+    """CACHED_SYSTEM_TEMPLATE must include target_role_profile placeholder."""
 
-    def test_prompt_has_profile_placeholder(self):
-        assert "{target_role_profile}" in FIT_SCORE_PROMPT
+    def test_template_has_profile_placeholder(self):
+        assert "{target_role_profile}" in CACHED_SYSTEM_TEMPLATE
