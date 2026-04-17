@@ -247,6 +247,12 @@ In a Claude Code session:
 ```
 /project:diagnose-run          # diagnose today's run
 /project:diagnose-run yesterday
+
+# View API spending report (in a Claude Code session)
+/api-cost-report
+
+# Or read the raw log directly
+type logs\api_costs.log
 ```
 
 ---
@@ -304,6 +310,7 @@ ai-job-pipeline/
 ├── data/last_analysis.json       # Feedback analysis state
 └── logs/
     ├── YYYY-MM-DD.log            # Daily pipeline logs
+    ├── api_costs.log             # Per-call API cost log (accumulates over time)
     └── config_changes.log        # Automated config change audit trail
 ```
 
