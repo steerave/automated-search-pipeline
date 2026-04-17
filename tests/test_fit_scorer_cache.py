@@ -7,7 +7,8 @@ from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from fit_scorer import build_cached_system_prompt, score_job
+import pytest
+from fit_scorer import BillingError, build_cached_system_prompt, score_job, score_jobs_batch
 
 
 SAMPLE_PROFILE = {
@@ -124,3 +125,107 @@ class TestScoreJobUsesCachedSystem:
             result = score_job(SAMPLE_JOB, cached_system, client)
         assert result["score"] == 8
         assert result["rationale"] == "Good match."
+
+
+class TestScoreJobErrorHandling:
+    """score_job handles API errors correctly: billing aborts, transient errors return None."""
+
+    def _billing_error_client(self):
+        """Client that raises the exact error the Anthropic API returns on low credits."""
+        client = MagicMock()
+        client.messages.create.side_effect = Exception(
+            "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', "
+            "'message': 'Your credit balance is too low to access the Anthropic API. "
+            "Please go to Plans & Billing to upgrade or purchase credits.'}}"
+        )
+        return client
+
+    def _transient_error_client(self):
+        """Client that raises a generic transient error on every attempt."""
+        client = MagicMock()
+        client.messages.create.side_effect = Exception("Connection timeout")
+        return client
+
+    def test_billing_error_raises_billing_error(self):
+        client = self._billing_error_client()
+        cached_system = build_cached_system_prompt(SAMPLE_PROFILE)
+        with patch("fit_scorer._load_target_profile", return_value=""):
+            with pytest.raises(BillingError):
+                score_job(SAMPLE_JOB, cached_system, client)
+
+    def test_billing_error_does_not_retry(self):
+        """A billing error should abort on the first attempt — not retry 3 times."""
+        client = self._billing_error_client()
+        cached_system = build_cached_system_prompt(SAMPLE_PROFILE)
+        with patch("fit_scorer._load_target_profile", return_value=""):
+            with pytest.raises(BillingError):
+                score_job(SAMPLE_JOB, cached_system, client)
+        assert client.messages.create.call_count == 1
+
+    def test_transient_error_returns_none_after_retries(self):
+        """A non-billing API error should retry 3 times then return None (not a fake score)."""
+        client = self._transient_error_client()
+        cached_system = build_cached_system_prompt(SAMPLE_PROFILE)
+        with patch("fit_scorer._load_target_profile", return_value=""), \
+             patch("fit_scorer.time.sleep"):
+            result = score_job(SAMPLE_JOB, cached_system, client)
+        assert result is None
+
+    def test_transient_error_retries_three_times(self):
+        client = self._transient_error_client()
+        cached_system = build_cached_system_prompt(SAMPLE_PROFILE)
+        with patch("fit_scorer._load_target_profile", return_value=""), \
+             patch("fit_scorer.time.sleep"):
+            score_job(SAMPLE_JOB, cached_system, client)
+        assert client.messages.create.call_count == 3
+
+
+class TestScoreJobsBatchErrorHandling:
+    """score_jobs_batch aborts on BillingError; skips jobs that return None."""
+
+    def _good_client(self, score: int = 7) -> MagicMock:
+        import json as _json
+        client = MagicMock()
+        response = MagicMock()
+        response.content = [MagicMock(text=_json.dumps({"score": score, "rationale": "Good."}))]
+        client.messages.create.return_value = response
+        return client
+
+    def _billing_error_client(self):
+        client = MagicMock()
+        client.messages.create.side_effect = Exception(
+            "Your credit balance is too low to access the Anthropic API."
+        )
+        return client
+
+    def test_billing_error_aborts_batch_early(self):
+        """When billing fails on job 1, remaining jobs are not attempted."""
+        jobs = [dict(SAMPLE_JOB) for _ in range(5)]
+        client = self._billing_error_client()
+        with patch("fit_scorer._load_target_profile", return_value=""), \
+             patch("fit_scorer.build_cached_system_prompt", return_value="cached"):
+            result = score_jobs_batch(jobs, SAMPLE_PROFILE, client)
+        # No jobs scored — batch aborted immediately
+        assert result == []
+        # Only 1 API call was made (no retries on billing, no further jobs attempted)
+        assert client.messages.create.call_count == 1
+
+    def test_none_result_skipped_not_added_to_output(self):
+        """Jobs that fail scoring (None) are excluded from results rather than given a fake score."""
+        jobs = [dict(SAMPLE_JOB)]
+        with patch("fit_scorer._load_target_profile", return_value=""), \
+             patch("fit_scorer.build_cached_system_prompt", return_value="cached"), \
+             patch("fit_scorer.score_job", return_value=None):
+            result = score_jobs_batch(jobs, SAMPLE_PROFILE, self._good_client())
+        assert result == []
+
+    def test_successful_jobs_still_returned_when_others_fail(self):
+        """If only some jobs fail with transient errors, the successful ones are still returned."""
+        jobs = [dict(SAMPLE_JOB), dict(SAMPLE_JOB)]
+        return_values = [{"score": 8, "rationale": "Good."}, None]
+        with patch("fit_scorer._load_target_profile", return_value=""), \
+             patch("fit_scorer.build_cached_system_prompt", return_value="cached"), \
+             patch("fit_scorer.score_job", side_effect=return_values):
+            result = score_jobs_batch(jobs, SAMPLE_PROFILE, self._good_client())
+        assert len(result) == 1
+        assert result[0]["fit_score"] == 8

@@ -17,6 +17,12 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+class BillingError(Exception):
+    """Raised when the Anthropic API rejects a call due to insufficient credits.
+    Signals the batch loop to abort immediately — retrying is pointless and wastes time.
+    """
+
+
 def _load_target_profile() -> str:
     """Load target role profile if it exists. Returns empty string if not found."""
     profile_path = Path(__file__).parent.parent / "profile" / "target_role_profile.md"
@@ -213,12 +219,18 @@ def score_job(job: dict, cached_system: str, client) -> dict:
             if attempt < 2:
                 time.sleep(2)
         except Exception as e:
+            error_str = str(e)
+            # Billing errors are permanent — retrying burns time and won't help
+            if "credit balance is too low" in error_str or "insufficient_balance" in error_str:
+                raise BillingError(
+                    "Anthropic API credit balance too low. Add credits at console.anthropic.com."
+                ) from e
             logger.error(f"Claude API error on attempt {attempt + 1}: {e}")
             if attempt < 2:
                 time.sleep(5)
 
     logger.error(f"Failed to score job after 3 attempts: {job.get('title')} @ {job.get('company')}")
-    return {"score": 5, "rationale": "Score unavailable due to API error."}
+    return None
 
 
 def score_jobs_batch(jobs: list[dict], profile: dict, client) -> list[dict]:
@@ -231,12 +243,28 @@ def score_jobs_batch(jobs: list[dict], profile: dict, client) -> list[dict]:
     logger.info(f"Prompt caching enabled — profile system prompt built once for {len(jobs)} jobs")
 
     scored = []
+    skipped = 0
     for i, job in enumerate(jobs):
         logger.info(f"Scoring job {i+1}/{len(jobs)}: {job.get('title')} @ {job.get('company')}")
-        result = score_job(job, cached_system, client)
+        try:
+            result = score_job(job, cached_system, client)
+        except BillingError as e:
+            logger.error(f"BILLING ERROR — aborting scoring batch: {e}")
+            logger.warning(
+                f"Scoring aborted after {i}/{len(jobs)} jobs. "
+                f"Add credits at console.anthropic.com and re-run."
+            )
+            break
+        if result is None:
+            skipped += 1
+            logger.warning(f"Skipping job (scoring failed): {job.get('title')} @ {job.get('company')}")
+            continue
         job["fit_score"] = result["score"]
         job["fit_notes"] = result["rationale"]
         scored.append(job)
         if i < len(jobs) - 1:
             time.sleep(0.5)
+
+    if skipped:
+        logger.warning(f"Scoring complete: {len(scored)} scored, {skipped} skipped due to API errors")
     return scored
