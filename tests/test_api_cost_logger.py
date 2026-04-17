@@ -111,13 +111,17 @@ class TestLogApiCost:
         assert "out=142" in log_file.read_text()
 
     def test_log_line_contains_dollar_amount(self, tmp_path):
+        # in=1523, cr=1201, out=142 on claude-sonnet-4-6:
+        # (1523*3.00 + 1201*0.30 + 142*15.00) / 1_000_000 = $0.00706
         log_file = self._call_log(tmp_path)
-        assert "$" in log_file.read_text()
+        assert "$0.00706" in log_file.read_text()
 
     def test_log_line_contains_datetime(self, tmp_path):
+        import re
         log_file = self._call_log(tmp_path)
         content = log_file.read_text()
-        assert "202" in content  # year prefix present
+        assert re.search(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}", content), \
+            "Log line should contain ISO datetime like 2026-04-17T05:29:58"
 
     def test_multiple_calls_append_multiple_lines(self, tmp_path):
         usage = _make_usage(input_tokens=100, output_tokens=50)
