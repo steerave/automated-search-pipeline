@@ -6,6 +6,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+- **Project decommissioned (2026-06-28)** — daily automation halted after Sarun accepted a new role. Both Windows scheduled tasks ("Job Search Tool" 5am, "Job Search Feedback Analysis" 6am) disabled. API keys left in place (spending stops with the tasks disabled); revoke via the Anthropic / Google Cloud / Gmail consoles for permanent retirement. Re-enable the tasks to reactivate.
+
 ### Added
 - ATS Watchlist scanner — directly queries company ATS APIs (Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, BambooHR) for jobs not syndicated to job boards
 - Watchlist company management via Google Sheet "Watchlist" tab — add a company name and the tool auto-detects its ATS type and slug on the next run

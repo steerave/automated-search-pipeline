@@ -1,5 +1,26 @@
 # Project Status Log
 
+## 2026-06-28
+
+**Done:**
+- **Project decommissioned.** Sarun accepted a new job, so the daily automation was systematically shut down.
+- Disabled both Windows Task Scheduler jobs:
+  - `Job Search Tool` (5am daily — `run.bat` → `main.py`) → **Disabled**
+  - `Job Search Feedback Analysis` (6am daily — `run_feedback.bat` → `analyze_feedback.py`) → **Disabled** (required an elevated/admin prompt to change)
+- Confirmed no cloud automation existed (no Claude Code scheduled routines / cron agents).
+- Pipeline had been running uninterrupted daily through 2026-06-28.
+
+**In Progress:**
+- Nothing.
+
+**Next (only if reactivating):**
+- Re-enable the two scheduled tasks (`schtasks /change /tn "..." /enable`).
+- Confirm `.env` keys are still valid (Anthropic, Google service account, Gmail app password); regenerate and re-paste any that were revoked.
+
+**Notes:**
+- **API keys were left in place** (not revoked) — spending is already halted because the tasks are disabled, so reactivation is low-friction. Keys live in plaintext `.env`; revoke via the respective consoles if permanent retirement is desired.
+- Loose ends never built (now moot): config-validation/test-runner/auto-summary hooks, `estimate-costs` skill, career-strategy expansion (multi-profile AI search, career-advisor skill, networking tracker).
+
 ## 2026-04-16
 
 **Done:**
